@@ -107,12 +107,45 @@ class MultiAgentSearchAgent(Agent):
         self.index = 0  # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
+        self.current_node = -1
 
 
 class MinimaxAgent(MultiAgentSearchAgent):
     """
       Your minimax agent (question 2)
     """
+
+    def pacman_agent(self, gameState, agent_index, current_depth):
+        best_score = -999999999
+        best_action = "Stop"
+        for action in gameState.getLegalActions(agent_index):
+            score = self.minimax(gameState.generateSuccessor(agent_index, action),
+                               (current_depth + 1) % gameState.getNumAgents(),
+                               current_depth + 1)
+            if score > best_score:
+                best_score = score
+                best_action = action
+        return best_score, best_action
+
+    def ghost_agent(self, gameState, agent_index, current_depth):
+        best_score = 999999999
+        best_action = "Stop"
+        for action in gameState.getLegalActions(agent_index):
+            score = self.minimax(gameState.generateSuccessor(agent_index, action),
+                               (current_depth + 1) % gameState.getNumAgents(),
+                               current_depth + 1)
+            if score < best_score:
+                best_score = score
+                best_action = action
+        return best_score, best_action
+
+    def minimax(self, gameState, agent_index, current_depth):
+        if gameState.isLose() or gameState.isWin() or current_depth >= self.depth * gameState.getNumAgents():
+            return self.evaluationFunction(gameState)
+        if agent_index == 0:
+            return self.pacman_agent(gameState, agent_index, current_depth)[0]
+        else:
+            return self.ghost_agent(gameState, agent_index, current_depth)[0]
 
     def getAction(self, gameState):
         """
@@ -131,29 +164,8 @@ class MinimaxAgent(MultiAgentSearchAgent):
           gameState.getNumAgents():
             Returns the total number of agents in the game
         """
-        if self.depth == 0 or not gameState.getLegalActions(0):
-            return self.evaluationFunction(gameState)
-        for agent in range(gameState.getNumAgents()):
-            if agent == 0:
-                best_score = -9999999
-                best_action = ""
-                for action in gameState.getLegalActions():
-                    self.depth -= 1
-                    score = self.getAction(gameState.generateSuccessor(agent, action))
-                    if score > best_score:
-                        best_score = score
-                        best_action = action
-                return best_action
-            else:
-                best_score = 9999999
-                best_action = ""
-                for action in gameState.getLegalActions():
-                    self.depth -= 1
-                    score = self.getAction(gameState.generateSuccessor(agent, action))
-                    if score < best_score:
-                        best_score = score
-                        best_action = action
-                return best_action
+        best_action = self.pacman_agent(gameState, self.index, 0)
+        return best_action[1]
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -161,12 +173,53 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       Your minimax agent with alpha-beta pruning (question 3)
     """
 
+    def pacman_agent(self, gameState, agent_index, current_depth, alpha, beta):
+        best_score = -999999999
+        best_action = "Stop"
+        for action in gameState.getLegalActions(agent_index):
+            score = self.alphabeta(gameState.generateSuccessor(agent_index, action),
+                               (current_depth + 1) % gameState.getNumAgents(),
+                               current_depth + 1, alpha, beta)
+            if score > best_score:
+                best_score = score
+                best_action = action
+            if score > beta:
+                break
+            alpha = max(alpha, best_score)
+        return best_score, best_action
+
+    def ghost_agent(self, gameState, agent_index, current_depth, alpha, beta):
+        best_score = 999999999
+        best_action = "Stop"
+        for action in gameState.getLegalActions(agent_index):
+            score = self.alphabeta(gameState.generateSuccessor(agent_index, action),
+                               (current_depth + 1) % gameState.getNumAgents(),
+                               current_depth + 1, alpha, beta)
+            if score < best_score:
+                best_score = score
+                best_action = action
+            if score < alpha:
+                break
+            beta = min(beta, best_score)
+        return best_score, best_action
+
+    def alphabeta(self, gameState, agent_index, current_depth, alpha, beta):
+        if gameState.isLose() or gameState.isWin() or current_depth >= self.depth * gameState.getNumAgents():
+            return self.evaluationFunction(gameState)
+        if agent_index == 0:
+            return self.pacman_agent(gameState, agent_index, current_depth, alpha, beta)[0]
+        else:
+            return self.ghost_agent(gameState, agent_index, current_depth, alpha, beta)[0]
+
     def getAction(self, gameState):
         """
           Returns the minimax action using self.depth and self.evaluationFunction
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        alpha = -99999999
+        beta = 9999999
+        best_action = self.pacman_agent(gameState, self.index, 0, alpha, beta)
+        return best_action[1]
+
 
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
